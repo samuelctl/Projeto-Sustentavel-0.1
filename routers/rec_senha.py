@@ -33,7 +33,7 @@ def esqueci_senha(dados: EsqueciSenhaRequest, db: Session = Depends(get_db)):
         <!-- Header -->
         <div style="text-align:center; margin-bottom:20px;">
             <h2 style="color:#1B5E20; margin:0;">
-                🌿 EcoControl
+                🌳 Ectotally
             </h2>
             <p style="color:#777; font-size:13px; margin-top:5px;">
                 Controle inteligente de gastos
