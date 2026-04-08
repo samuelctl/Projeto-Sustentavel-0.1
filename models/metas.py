@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Numeric, Date, DateTime, ForeignKey, func
 from sqlalchemy.orm import relationship
-from database.connection import Base
+from database.connection import Base, SessionLocal
 
 
 class Meta(Base):
@@ -13,3 +13,6 @@ class Meta(Base):
     data_fim = Column(Date, nullable=False)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
     usuario = relationship("Usuario", back_populates="metas")
+    consumos = relationship("Consumo", back_populates="meta")
+db = SessionLocal()
+db.close()

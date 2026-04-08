@@ -1,7 +1,8 @@
 from pydantic import BaseModel
 from decimal import Decimal
+
+
 class SimulacaoCreate(BaseModel):
-    atividade : str
-    consumo_valor :Decimal
+    atividade: str
     tipo: str
-    usuario_id : int
+    consumo_valor: Decimal

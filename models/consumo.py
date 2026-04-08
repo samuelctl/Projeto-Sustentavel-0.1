@@ -10,6 +10,8 @@ class Consumo(Base):
     gasto = Column(Numeric(10,2),nullable=False)
     data = Column(DateTime, server_default=func.now())
     usuario_id = Column(Integer, ForeignKey("usuarios.id"))
+    meta_id = Column(Integer, ForeignKey("metas.id_meta"), nullable=True)
     usuario = relationship("Usuario", back_populates="consumos")
+    meta = relationship("Meta", back_populates="consumos")
 db = SessionLocal()
 db.close()

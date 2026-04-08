@@ -1,51 +1,38 @@
-from fastapi import FastAPI, Depends, APIRouter, HTTPException
-from core.email import enviar_email
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database.connection import SessionLocal,get_db
-from schemas.rec_senha import EsqueciSenhaRequest
+
+from core.email import enviar_email
+from core.security import criar_token_recuperacao, verificar_token, gerar_hash_senha
+from database.connection import get_db
+from schemas.rec_senha import EsqueciSenhaRequest,RedefinirSenhaRequest
 from models.usuario import Usuario
 
 router = APIRouter(tags=["Recuperar Senha"])
+
 
 @router.post("/esqueci-senha")
 def esqueci_senha(dados: EsqueciSenhaRequest, db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.email == dados.email).first()
 
-    if not usuario:
-        return {"mensagem": "Se o email existir, um link será enviado."}
+    if usuario:
+        token = criar_token_recuperacao(usuario.id, usuario.email)
+        link = f"http://localhost:3000/redefinir-senha?token={token}"
 
-    import secrets
-    from datetime import datetime, timedelta
-
-    token = secrets.token_urlsafe(32)
-
-    usuario.reset_token = token
-    usuario.reset_token_expira_em = datetime.utcnow() + timedelta(minutes=30)
-
-    db.commit()
-
-    link = f"http://localhost:3000/redefinir-senha?token={token}"
-    mensagem = f"""
+        mensagem = f"""
 <div style="background-color:#F1F8F4; padding:40px 0; font-family:Arial, sans-serif;">
-    
     <div style="max-width:520px; margin:auto; background:#FFFFFF; border-radius:14px; padding:35px; box-shadow:0 6px 20px rgba(0,0,0,0.05);">
         
-        <!-- Header -->
         <div style="text-align:center; margin-bottom:20px;">
-            <h2 style="color:#1B5E20; margin:0;">
-                🌳 Ectotally
-            </h2>
+            <h2 style="color:#1B5E20; margin:0;">🌳 Ectotally</h2>
             <p style="color:#777; font-size:13px; margin-top:5px;">
                 Controle inteligente de gastos
             </p>
         </div>
 
-        <!-- Título -->
         <h3 style="color:#2E7D32; text-align:center; margin-bottom:20px;">
             Recuperação de senha
         </h3>
 
-        <!-- Texto -->
         <p style="color:#444; font-size:15px;">
             Olá, <strong>{usuario.nome}</strong>
         </p>
@@ -55,7 +42,6 @@ def esqueci_senha(dados: EsqueciSenhaRequest, db: Session = Depends(get_db)):
             Para continuar, clique no botão abaixo:
         </p>
 
-        <!-- Botão -->
         <div style="text-align:center; margin:30px 0;">
             <a href="{link}" 
                style="
@@ -73,34 +59,52 @@ def esqueci_senha(dados: EsqueciSenhaRequest, db: Session = Depends(get_db)):
             </a>
         </div>
 
-        <!-- Aviso -->
         <div style="background:#E8F5E9; padding:15px; border-radius:8px;">
             <p style="margin:0; font-size:14px; color:#2E7D32;">
                 ⚠️ Este link expira em 30 minutos.
             </p>
         </div>
 
-        <!-- Segurança -->
         <p style="color:#777; font-size:13px; margin-top:20px; text-align:center;">
             Se você não solicitou essa alteração, ignore este email com segurança.
         </p>
 
-        <!-- Footer -->
         <hr style="border:none; border-top:1px solid #eee; margin:25px 0;">
 
         <p style="text-align:center; font-size:12px; color:#999;">
             © 2026 EcoControl • Todos os direitos reservados
         </p>
-
     </div>
-
 </div>
 """
 
-    enviar_email(
-        destinatario=usuario.email,
-        assunto="Recuperação de senha",
-        mensagem_html=mensagem
-    )
+        enviar_email(
+            destinatario=usuario.email,
+            assunto="Recuperação de senha",
+            mensagem_html=mensagem
+        )
 
-    return {"mensagem": "Email de recuperação enviado com sucesso!"}
+    return {"mensagem": "Se o email existir, um link será enviado."}
+
+
+@router.post("/redefinir-senha")
+def redefinir_senha(dados: RedefinirSenhaRequest, db: Session = Depends(get_db)):
+    payload = verificar_token(dados.token)
+
+    if not payload:
+        raise HTTPException(status_code=400, detail="Token inválido ou expirado")
+
+    if payload.get("type") != "reset_password":
+        raise HTTPException(status_code=400, detail="Token inválido para redefinição de senha")
+
+    usuario_id = payload.get("sub")
+
+    usuario = db.query(Usuario).filter(Usuario.id == int(usuario_id)).first()
+
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    usuario.senha = gerar_hash_senha(dados.nova_senha)
+    db.commit()
+
+    return {"mensagem": "Senha redefinida com sucesso"}

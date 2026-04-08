@@ -1,11 +1,10 @@
 from pydantic import BaseModel
-from decimal import Decimal
 from datetime import datetime
+from typing import Optional
+
 
 class ConsumoCreate(BaseModel):
-    tipo : str
-    gasto : Decimal
-    usuario_id : int
-    data : datetime 
-    class Config:
-        from_attributes = True  
+    tipo: str
+    gasto: float
+    data: datetime
+    meta_id: Optional[int] = None
